@@ -1,11 +1,13 @@
 import { Todo } from "../../../server/utils/trpc/routers/todo";
-import { createTodo } from "../app";
+import { todoClient } from "./trpc";
 
 const todoContainer = document.getElementById(
   "todo-container"
 ) as HTMLDivElement;
 
 const todoInput = document.getElementById("new-todo") as HTMLInputElement;
+
+// const todoCheckBoxes = document.getElementsByClassName("todo-check") as HTMLCollectionOf<HTMLInputElement>;
 
 document.addEventListener("DOMContentLoaded", () => {
   todoInput?.addEventListener("keyup", createTodoItem);
@@ -17,13 +19,32 @@ async function createTodoItem(event: KeyboardEvent) {
 
     if (todoText) {
       todoInput.value = "";
-      const newTodo = await createTodo(todoText);
+      const newTodo = await todoClient.createTodo(todoText);
 
       const element = createNewChildElement(newTodo);
 
       todoContainer.insertAdjacentHTML("afterbegin", element);
+
+      const newTodoCheckBox = document.getElementById(
+        `bordered-checkbox-${newTodo.id}`
+      );
+
+      newTodoCheckBox?.addEventListener("change", confirmState);
     }
   }
+}
+
+async function confirmState(event: Event) {
+  const element = event.target as HTMLInputElement;
+  const todoId = element.id.replace("todo-item-", "");
+  if (element.checked) {
+      const todo = await todoClient.updateTodo(todoId, true);
+      element.parentElement?.remove();  
+      return todo;
+  }
+
+  const todo = await todoClient.updateTodo(todoId, false);
+  return todo;
 }
 
 function createNewChildElement(todo: Todo) {

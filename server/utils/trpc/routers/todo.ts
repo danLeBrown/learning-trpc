@@ -1,14 +1,20 @@
 import { t } from "../trpc";
 import z from "zod";
-import crypto from 'crypto';
+import crypto from "crypto";
 
 export type Todo = {
   id: string;
   text: string;
   isCompleted: boolean;
-}
+};
 
 const TODOS: Todo[] = [];
+
+const todoQueryProcedure = t.procedure.input(
+  z.object({
+    id: z.string(),
+  })
+);
 
 export const todoRouter = t.router({
   createTodo: t.procedure
@@ -17,34 +23,47 @@ export const todoRouter = t.router({
         text: z.string(),
       })
     )
-    .mutation(req => {
+    .mutation((req) => {
       const todo: Todo = {
-        id: crypto.randomBytes(16).toString('hex'),
-        text:req.input.text,
-        isCompleted: false
-      }
+        id: crypto.randomBytes(16).toString("hex"),
+        text: req.input.text,
+        isCompleted: false,
+      };
 
       TODOS.push(todo);
-      
+
       return todo;
     }),
 
   readTodo: t.procedure.query(() => {
-    console.log("read todo");
-    return "read todo";
+    return TODOS;
   }),
 
-  deleteTodo: t.procedure.input(z.string()).mutation(() => {}),
+  deleteTodo: todoQueryProcedure.mutation((req) => {
+    const todo = TODOS.find((todo) => todo.id === req.input.id);
 
-  updateTodo: t.procedure
+    if (todo) {
+      TODOS.splice(TODOS.indexOf(todo), 1);
+    }
+
+    return todo;
+  }),
+
+  updateTodo: todoQueryProcedure
     .input(
       z.object({
-        id: z.string(),
-        text: z.string(),
-        completed: z.boolean(),
+        isCompleted: z.boolean(),
       })
     )
-    .mutation(() => {}),
+    .mutation(req => {
+      const todo = TODOS.find((todo) => todo.id === req.input.id);
+
+      if (todo) {
+        todo.isCompleted = req.input.isCompleted;
+      }
+
+      return todo;
+    }),
 });
 
 export type TodoRouter = typeof todoRouter;
